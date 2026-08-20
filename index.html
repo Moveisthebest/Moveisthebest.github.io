@@ -65,6 +65,15 @@
   .sidebar .author__avatar img { max-width: 220px; }
   /* let the address / email lines use the extra room instead of wrapping */
   .sidebar .author__urls li { white-space: normal; }
+
+  /* ---- Visitor globe ----------------------------------------------------
+     The widget scales itself to its container, so the container is what
+     controls the size. Change max-width to make the globe bigger/smaller. */
+  .visitor-globe { max-width: 180px; margin: 2em auto 0; text-align: center; }
+  .visitor-globe canvas,
+  .visitor-globe img,
+  .visitor-globe svg,
+  .visitor-globe > div { max-width: 100% !important; height: auto !important; }
 </style>
 </head>
 
@@ -299,21 +308,11 @@
           <li><em>2023:</em> Fundamentals of Internet Application Development (CS2204), CityU - Teaching Assistant</li>
         </ul>
 
-        <p style="margin-top:2em;font-size:small;">Last updated Aug 2026.</p>
+        <p style="margin-top:2em;font-size:small;text-align:center;">Last updated Aug 2026.</p>
 
-        <!-- Visitor globe (MapMyVisitors, the successor of ClustrMaps).
-             Snippet is exactly as issued by mapmyvisitors.com — do not add
-             async/defer, the widget writes itself in at parse time.        -->
-        <div style="width:60%;margin:1em auto;text-align:center;">
+        <div class="visitor-globe">
           <script type="text/javascript" id="mmvst_globe" src="//mapmyvisitors.com/globe.js?d=qtHM-c75Q2IgT91_W9Y7dJfkc65f8Lu95UDaZ_4fank"></script>
         </div>
-
-        <!-- Backup globe: RevolverMaps (also a spinning 3D globe, free).
-             Generate the snippet at https://www.revolvermaps.com/ and paste it
-             here — the i= value is per-site, so it cannot be filled in advance.
-        <script type="text/javascript" async
-                src="//rf.revolvermaps.com/0/0/8.js?i=YOUR_ID&amp;m=0&amp;c=ff0000&amp;cr1=ffffff&amp;f=arial&amp;fs=12&amp;ff=0&amp;l=33"></script>
-        -->
 
       </section>
     </div>
