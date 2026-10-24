@@ -67,8 +67,18 @@
   .sidebar .author__avatar img { max-width: 220px; }
   /* let the address / email lines use the extra room instead of wrapping */
   .sidebar .author__urls li { white-space: normal; }
+
+  /* ---- Visitor globe ----------------------------------------------------
+     The widget scales itself to its container, so the container is what
+     controls the size. Change max-width to make the globe bigger/smaller. */
+  .visitor-globe { max-width: 180px; margin: 2em auto 0; text-align: center; }
+  .visitor-globe canvas,
+  .visitor-globe img,
+  .visitor-globe svg,
+  .visitor-globe > div { max-width: 100% !important; height: auto !important; }
 </style>
-<script defer src="https://cloud.umami.is/script.js" data-website-id="814aa443-2953-41bb-8fb4-b915452db48e"></script>
+<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+<script>LA.init({id:"3RbhERTgA4dKxoZm",ck:"3RbhERTgA4dKxoZm",autoTrack:true})</script>
 </head>
 
 <body>
@@ -309,6 +319,10 @@
         </ul>
 
         <p style="margin-top:2em;font-size:small;text-align:center;">Last updated Oct 2026.</p>
+
+        <div class="visitor-globe">
+          <script type='text/javascript' id='mapmyvisitors' src='https://mapmyvisitors.com/map.js?cl=ffffff&w=a&t=n&d=fE-ZHLMdbmuiYBF0H_YfTGrPWOu1zMN68kC3pi4LRdQ&cmo=53abff'></script>
+        </div>
       </section>
     </div>
   </article>
