@@ -70,6 +70,12 @@
   /* let the address / email lines use the extra room instead of wrapping */
   .sidebar .author__urls li { white-space: normal; }
 
+  /* ---- Top menu on narrow screens ----------------------------------------
+     The menu is a single row of links. Let it scroll sideways instead of
+     widening the whole page, which pushed fixed elements off-screen.       */
+  .greedy-nav { overflow-x: auto; }
+  .greedy-nav .visible-links { white-space: nowrap; }
+
   /* ---- Visitor globe ----------------------------------------------------
      The widget scales itself to its container, so the container is what
      controls the size. Change max-width to make the globe bigger/smaller. */

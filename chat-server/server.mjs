@@ -10,7 +10,7 @@ const env = process.env;
 const PORT = Number(env.PORT) || 8791;
 const HOST = env.HOST || "127.0.0.1";
 const UPSTREAM_URL = env.UPSTREAM_URL || "https://api.deepseek.com/chat/completions";
-const MODEL = env.MODEL || "deepseek-chat";
+const MODEL = env.MODEL || "deepseek-flash"; // thinking mode is on by default
 const ALLOWED_ORIGINS = (env.ALLOWED_ORIGINS || "https://moveisthebest.github.io")
   .split(",").map((s) => s.trim()).filter(Boolean);
 const LIMITS = {
@@ -19,9 +19,11 @@ const LIMITS = {
   ipRequestsPerMinute: Number(env.IP_REQUESTS_PER_MINUTE) || 6,
   maxConcurrent: Number(env.MAX_CONCURRENT) || 20,
 };
-// Cached input is much cheaper on DeepSeek, so it only counts at this fraction.
-const CACHE_HIT_WEIGHT = env.CACHE_HIT_WEIGHT !== undefined ? Number(env.CACHE_HIT_WEIGHT) : 0.1;
-const MAX_OUTPUT_TOKENS = Number(env.MAX_OUTPUT_TOKENS) || 800;
+// Cached input costs 1/50 of uncached input on DeepSeek, so it only counts at this fraction.
+const CACHE_HIT_WEIGHT = env.CACHE_HIT_WEIGHT !== undefined ? Number(env.CACHE_HIT_WEIGHT) : 0.02;
+// In thinking mode this limit covers the reasoning as well as the answer.
+const MAX_OUTPUT_TOKENS = Number(env.MAX_OUTPUT_TOKENS) || 8000;
+const TRUNCATED_NOTE = "\n\n…(This answer hit the length limit. Ask me to continue.)";
 const MAX_TOOL_ROUNDS = 3;
 const MAX_MESSAGES = 12;
 const MAX_CHARS_PER_MESSAGE = 1500;
@@ -170,13 +172,16 @@ function sanitizeMessages(raw) {
   return messages;
 }
 
-// Reads one streamed DeepSeek reply: forwards text deltas, collects tool calls and usage.
-async function readStream(body, onText) {
+// Reads one streamed DeepSeek reply: forwards the answer text and collects the
+// reasoning (thinking mode), tool calls, usage and finish reason.
+async function readStream(body, onText, onThinking) {
   const decoder = new TextDecoder();
   const toolCalls = [];
   let buffer = "";
   let content = "";
+  let reasoning = "";
   let usage = null;
+  let finishReason = null;
   for await (const chunk of body) {
     buffer += decoder.decode(chunk, { stream: true });
     let i;
@@ -191,8 +196,14 @@ async function readStream(body, onText) {
         continue; // keep-alive or partial line
       }
       if (data.usage) usage = data.usage;
-      const delta = data.choices && data.choices[0] && data.choices[0].delta;
+      const choice = data.choices && data.choices[0];
+      if (choice && choice.finish_reason) finishReason = choice.finish_reason;
+      const delta = choice && choice.delta;
       if (!delta) continue;
+      if (delta.reasoning_content) {
+        if (!reasoning) onThinking();
+        reasoning += delta.reasoning_content;
+      }
       if (delta.content) {
         content += delta.content;
         onText(delta.content);
@@ -205,7 +216,7 @@ async function readStream(body, onText) {
       }
     }
   }
-  return { content, usage, toolCalls: toolCalls.filter(Boolean) };
+  return { content, reasoning, usage, finishReason, toolCalls: toolCalls.filter(Boolean) };
 }
 
 async function handleChat(req, res, cors) {
@@ -281,15 +292,26 @@ async function handleChat(req, res, cors) {
         });
       }
 
-      const { content, usage, toolCalls } = await readStream(upstream.body, (text) =>
-        event({ choices: [{ delta: { content: text } }] })
+      const { content, reasoning, usage, finishReason, toolCalls } = await readStream(
+        upstream.body,
+        (text) => event({ choices: [{ delta: { content: text } }] }),
+        () => event({ status: "Thinking…" })
       );
       callInFlight = false;
       charged += usage ? billableTokens(usage) : estimate;
-      if (!useTools || !toolCalls.length) break;
+      if (!useTools || !toolCalls.length) {
+        if (finishReason === "length") event({ choices: [{ delta: { content: TRUNCATED_NOTE } }] });
+        break;
+      }
 
       // The model asked to read the original paper: run the tools and call it again.
-      conversation.push({ role: "assistant", content: content || "", tool_calls: toolCalls });
+      // In thinking mode its reasoning is passed back within the same turn.
+      conversation.push({
+        role: "assistant",
+        content: content || "",
+        ...(reasoning && { reasoning_content: reasoning }),
+        tool_calls: toolCalls,
+      });
       for (const call of toolCalls) {
         toolsUsed.push(call.function.name);
         event({ status: describeTool(call.function.name, call.function.arguments) });

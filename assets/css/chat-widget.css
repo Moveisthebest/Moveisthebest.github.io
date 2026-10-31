@@ -10,6 +10,7 @@
 }
 .kw-chat-launcher:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
 .kw-chat-launcher.is-hidden { display: none; }
+.kw-chat-label-short { display: none; }
 
 .kw-chat-panel {
   position: fixed; right: 24px; bottom: 24px; z-index: 10000;
@@ -19,7 +20,11 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, .25);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #222;
+  transition: width .2s ease, height .2s ease;
 }
+/* Expanded: a comfortable reading width, almost the full window height. */
+.kw-chat-panel.is-expanded { width: min(760px, calc(100vw - 48px)); height: calc(100vh - 48px); }
+.kw-chat-panel.is-expanded .kw-chat-msg { max-width: 90%; }
 .kw-chat-panel[hidden] { display: none; }
 
 .kw-chat-header {
@@ -28,6 +33,12 @@
 }
 .kw-chat-header strong { font-size: 15px; color: #fff; }
 .kw-chat-header small { display: block; opacity: .8; font-size: 12px; }
+.kw-chat-actions { display: flex; align-items: center; gap: 2px; }
+.kw-chat-expand {
+  width: auto; margin: 0; border: 0; background: transparent; color: #fff; cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 6px; opacity: .85;
+}
+.kw-chat-expand:hover { opacity: 1; }
 .kw-chat-close {
   border: 0; background: transparent; color: #fff; cursor: pointer;
   font-size: 22px; line-height: 1; padding: 4px;
@@ -42,9 +53,44 @@
 .kw-chat-quota-bar span { display: block; height: 100%; width: 0; background: #79292f; transition: width .3s ease; }
 .kw-chat-quota.is-low .kw-chat-quota-bar span { background: #d97706; }
 .kw-chat-quota-text { min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; }
-.kw-chat-messages { flex: 1; overflow-y: auto; padding: 14px; background: #f7f7f8; }
+/* Chat History / New chat bar under the quota, with a dropdown list. */
+.kw-chat-toolbar {
+  position: relative; display: flex; justify-content: space-between; align-items: center;
+  padding: 3px 8px; background: #fff; border-bottom: 1px solid #ececec; font-size: 12px;
+}
+.kw-chat-toolbar > button {
+  width: auto; margin: 0; padding: 4px 8px; border: 0; border-radius: 6px;
+  background: transparent; color: #79292f; cursor: pointer; font: inherit; font-weight: 600;
+}
+.kw-chat-toolbar > button:hover { background: #f6eeef; }
+.kw-chat-toolbar > button:disabled { opacity: .45; cursor: default; background: transparent; }
+.kw-chat-history {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 2;
+  max-height: 320px; overflow-y: auto; background: #fff;
+  border-bottom: 1px solid #e4e4e7; box-shadow: 0 10px 18px rgba(0, 0, 0, .12);
+}
+.kw-chat-history[hidden] { display: none; }
+.kw-chat-history-item { display: flex; align-items: center; border-bottom: 1px solid #f2f2f2; }
+.kw-chat-history-item.is-current { background: #f6eeef; }
+.kw-chat-history-open {
+  flex: 1; min-width: 0; width: auto; margin: 0; padding: 8px 12px; border: 0;
+  background: transparent; text-align: left; cursor: pointer; font: inherit; color: #222;
+}
+.kw-chat-history-open:hover { background: #faf5f5; }
+.kw-chat-history-open strong {
+  display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kw-chat-history-open small { color: #888; font-size: 11px; }
+.kw-chat-history-delete {
+  width: auto; margin: 0 6px 0 0; padding: 4px 8px; border: 0; background: transparent;
+  color: #aaa; cursor: pointer; font-size: 16px; line-height: 1;
+}
+.kw-chat-history-delete:hover { color: #79292f; }
+.kw-chat-history-empty { padding: 14px 12px; color: #888; text-align: center; }
+.kw-chat-history-note { padding: 6px 12px; color: #aaa; font-size: 11px; text-align: center; }
+.kw-chat-messages { position: relative; flex: 1; overflow-y: auto; padding: 14px; background: #f7f7f8; }
 .kw-chat-msg {
-  max-width: 85%; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px;
+  width: fit-content; max-width: 85%; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px;
   white-space: normal; word-wrap: break-word;
 }
 .kw-chat-msg.is-user { margin-left: auto; background: #79292f; color: #fff; border-bottom-right-radius: 4px; }
@@ -65,7 +111,7 @@
 .kw-chat-form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e4e4e7; background: #fff; }
 .kw-chat-form textarea {
   flex: 1; resize: none; height: 40px; max-height: 120px; margin: 0;
-  box-sizing: border-box; overflow-y: auto; line-height: 20px;
+  box-sizing: border-box; overflow-y: hidden; line-height: 20px;
   padding: 9px 10px; border: 1px solid #d4d4d8; border-radius: 10px;
   font: inherit; outline: none;
 }
@@ -77,7 +123,12 @@
 .kw-chat-form button:disabled { opacity: .5; cursor: default; }
 .kw-chat-note { padding: 0 12px 8px; font-size: 11px; color: #888; text-align: center; background: #fff; }
 
-@media (max-width: 480px) {
-  .kw-chat-panel { right: 0; bottom: 0; width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
-  .kw-chat-launcher { right: 16px; bottom: 16px; }
+/* Phones: the chat is always full screen, and the button is just the icon + "AI". */
+@media (max-width: 600px) {
+  .kw-chat-panel,
+  .kw-chat-panel.is-expanded { right: 0; bottom: 0; width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+  .kw-chat-expand { display: none; }
+  .kw-chat-launcher { right: 16px; bottom: 16px; padding: 12px 16px; }
+  .kw-chat-label-full { display: none; }
+  .kw-chat-label-short { display: inline; }
 }
