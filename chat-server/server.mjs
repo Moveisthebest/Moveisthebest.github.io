@@ -13,10 +13,14 @@ const UPSTREAM_URL = env.UPSTREAM_URL || "https://api.deepseek.com/chat/completi
 const MODEL = env.MODEL || "deepseek-flash"; // thinking mode is on by default
 const ALLOWED_ORIGINS = (env.ALLOWED_ORIGINS || "https://moveisthebest.github.io")
   .split(",").map((s) => s.trim()).filter(Boolean);
+// A "person" is an IP + browser pair (the widget sends a random ID it keeps in
+// localStorage). Browser IDs are easy to reset, so each IP also has a total cap.
 const LIMITS = {
-  ipTokensPerDay: Number(env.IP_TOKENS_PER_DAY) || 150000,
+  personTokensPerDay: Number(env.PERSON_TOKENS_PER_DAY) || 150000,
+  ipTokensPerDay: Number(env.IP_TOKENS_PER_DAY) || 450000,
   globalTokensPerDay: Number(env.GLOBAL_TOKENS_PER_DAY) || 3000000,
-  ipRequestsPerMinute: Number(env.IP_REQUESTS_PER_MINUTE) || 6,
+  personRequestsPerMinute: Number(env.PERSON_REQUESTS_PER_MINUTE) || 6,
+  ipRequestsPerMinute: Number(env.IP_REQUESTS_PER_MINUTE) || 20,
   maxConcurrent: Number(env.MAX_CONCURRENT) || 20,
 };
 // Cached input costs 1/50 of uncached input on DeepSeek, so it only counts at this fraction.
@@ -32,7 +36,8 @@ const STATE_FILE = path.join(env.STATE_DIRECTORY || ".", "usage.json");
 
 const ERRORS = {
   rate: "You're sending messages too quickly. Please wait a minute.",
-  ip_quota: "You've used up today's chat quota. Please come back tomorrow, or email me directly.",
+  person_quota: "You've used up today's chat quota. Please come back tomorrow, or email me directly.",
+  ip_quota: "Your network has used up today's chat quota. Please come back tomorrow, or email me directly.",
   global_quota: "The assistant has reached its daily budget. Please come back tomorrow, or email me directly.",
   busy: "The assistant is busy right now. Please try again in a moment.",
   bad_request: "Invalid request.",
@@ -42,65 +47,84 @@ const ERRORS = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-// Token budgets per IP and globally, reset daily (UTC). Node is single-threaded,
-// so reserve() is atomic; usage is persisted so a restart does not reset it.
+// Daily token budgets per person, per IP and globally, reset at 00:00 UTC. Node is
+// single-threaded, so reserve() is atomic; usage is persisted across restarts.
 class Limiter {
   constructor(file) {
     this.file = file;
-    this.recent = new Map(); // ip -> request timestamps in the last minute
+    this.recent = new Map(); // "p:<person>" / "i:<ip>" -> request timestamps in the last minute
     try {
       this.state = JSON.parse(fs.readFileSync(file, "utf8"));
     } catch {
       this.state = null;
     }
-    if (!this.state || this.state.day !== today()) this.state = { day: today(), ips: {}, global: 0 };
+    if (!this.state || this.state.day !== today()) this.state = this.fresh();
+    this.state.people ||= {};
+    this.state.ips ||= {};
     setInterval(() => this.pruneRecent(), 5 * 60 * 1000).unref();
+  }
+
+  fresh() {
+    return { day: today(), people: {}, ips: {}, global: 0 };
   }
 
   rollDay() {
     if (this.state.day !== today()) {
-      this.state = { day: today(), ips: {}, global: 0 };
+      this.state = this.fresh();
       this.markDirty();
     }
   }
 
   // Allowed while any quota is left; the estimate is held until settle() so that
   // a burst of parallel requests cannot all slip through.
-  reserve(ip, estimate) {
+  reserve(ip, person, estimate) {
     this.rollDay();
     const now = Date.now();
-    const recent = (this.recent.get(ip) || []).filter((t) => now - t < 60000);
-    if (recent.length >= LIMITS.ipRequestsPerMinute) return { ok: false, reason: "rate" };
-    const ipUsed = this.state.ips[ip] || 0;
-    if (ipUsed >= LIMITS.ipTokensPerDay) return { ok: false, reason: "ip_quota" };
-    if (this.state.global >= LIMITS.globalTokensPerDay) return { ok: false, reason: "global_quota" };
-    recent.push(now);
-    this.recent.set(ip, recent);
-    this.state.ips[ip] = ipUsed + estimate;
-    this.state.global += estimate;
-    this.markDirty();
-    return { ok: true, day: this.state.day };
+    const recent = (key) => (this.recent.get(key) || []).filter((t) => now - t < 60000);
+    const personRecent = recent(`p:${person}`);
+    const ipRecent = recent(`i:${ip}`);
+    if (personRecent.length >= LIMITS.personRequestsPerMinute || ipRecent.length >= LIMITS.ipRequestsPerMinute) {
+      return { ok: false, reason: "rate" };
+    }
+    const s = this.state;
+    if ((s.people[person] || 0) >= LIMITS.personTokensPerDay) return { ok: false, reason: "person_quota" };
+    if ((s.ips[ip] || 0) >= LIMITS.ipTokensPerDay) return { ok: false, reason: "ip_quota" };
+    if (s.global >= LIMITS.globalTokensPerDay) return { ok: false, reason: "global_quota" };
+    this.recent.set(`p:${person}`, [...personRecent, now]);
+    this.recent.set(`i:${ip}`, [...ipRecent, now]);
+    this.add(ip, person, estimate);
+    return { ok: true, day: s.day };
   }
 
-  settle(ip, day, delta) {
-    if (!delta || this.state.day !== day) return;
-    this.state.ips[ip] = Math.max(0, (this.state.ips[ip] || 0) + delta);
-    this.state.global = Math.max(0, this.state.global + delta);
+  add(ip, person, delta) {
+    const s = this.state;
+    s.people[person] = Math.max(0, (s.people[person] || 0) + delta);
+    s.ips[ip] = Math.max(0, (s.ips[ip] || 0) + delta);
+    s.global = Math.max(0, s.global + delta);
     this.markDirty();
   }
 
-  // Percentage of today's quota this IP has left.
-  remaining(ip) {
+  settle(ip, person, day, delta) {
+    if (delta && this.state.day === day) this.add(ip, person, delta);
+  }
+
+  // Percentage of today's quota this person has left, including what remains
+  // of their IP's total cap.
+  remaining(ip, person) {
     this.rollDay();
-    if (this.state.global >= LIMITS.globalTokensPerDay) return 0;
-    const used = this.state.ips[ip] || 0;
-    return Math.max(0, Math.floor(100 * (1 - used / LIMITS.ipTokensPerDay)));
+    const s = this.state;
+    if (s.global >= LIMITS.globalTokensPerDay) return 0;
+    const left = Math.min(
+      LIMITS.personTokensPerDay - (s.people[person] || 0),
+      LIMITS.ipTokensPerDay - (s.ips[ip] || 0)
+    );
+    return Math.max(0, Math.min(100, Math.floor((100 * left) / LIMITS.personTokensPerDay)));
   }
 
   pruneRecent() {
     const now = Date.now();
-    for (const [ip, times] of this.recent) {
-      if (!times.some((t) => now - t < 60000)) this.recent.delete(ip);
+    for (const [key, times] of this.recent) {
+      if (!times.some((t) => now - t < 60000)) this.recent.delete(key);
     }
   }
 
@@ -134,6 +158,12 @@ function sendError(res, status, code, headers, extra) {
 
 // nginx sets X-Real-IP; this server only listens on localhost, so it cannot be spoofed.
 const clientIp = (req) => req.headers["x-real-ip"] || req.socket.remoteAddress || "unknown";
+
+// IP + the widget's random per-browser ID; requests without a valid ID share "anon".
+function personKey(req, ip) {
+  const id = String(req.headers["x-chat-visitor"] || "");
+  return `${ip}|${/^[A-Za-z0-9_-]{8,64}$/.test(id) ? id : "anon"}`;
+}
 
 // Uncached input + output, plus cached input at CACHE_HIT_WEIGHT.
 function billableTokens(usage) {
@@ -238,9 +268,10 @@ async function handleChat(req, res, cors) {
   const estimate = Math.ceil(chars * 0.6) + MAX_OUTPUT_TOKENS;
 
   const ip = clientIp(req);
-  const reservation = limiter.reserve(ip, estimate);
+  const person = personKey(req, ip);
+  const reservation = limiter.reserve(ip, person, estimate);
   if (!reservation.ok) {
-    return sendError(res, 429, reservation.reason, cors, { quota: limiter.remaining(ip) });
+    return sendError(res, 429, reservation.reason, cors, { quota: limiter.remaining(ip, person) });
   }
 
   active++;
@@ -331,12 +362,12 @@ async function handleChat(req, res, cors) {
     active--;
     // A call cut off mid-stream has no usage report, so it costs the full estimate.
     if (callInFlight) charged += estimate;
-    limiter.settle(ip, reservation.day, charged - estimate);
+    limiter.settle(ip, person, reservation.day, charged - estimate);
     if (res.headersSent && !res.writableEnded) {
-      event({ quota: limiter.remaining(ip) });
+      event({ quota: limiter.remaining(ip, person) });
       res.end("data: [DONE]\n\n");
     }
-    console.log(`${ip} papers=[${papers.join(",")}] tools=[${toolsUsed.join(",")}] billable=${charged}`);
+    console.log(`${person} papers=[${papers.join(",")}] tools=[${toolsUsed.join(",")}] billable=${charged}`);
   }
 }
 
@@ -346,7 +377,7 @@ const server = http.createServer(async (req, res) => {
   const cors = {
     "Access-Control-Allow-Origin": originOk ? origin : ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-Chat-Visitor",
     Vary: "Origin",
   };
   const { pathname } = new URL(req.url, "http://localhost");
@@ -358,7 +389,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && pathname === "/health") return sendJson(res, 200, { ok: true }, {});
   if (req.method === "GET" && pathname === "/quota") {
     if (!originOk) return sendJson(res, 403, { error: "forbidden_origin" }, cors);
-    return sendJson(res, 200, { quota: limiter.remaining(clientIp(req)) }, cors);
+    const ip = clientIp(req);
+    return sendJson(res, 200, { quota: limiter.remaining(ip, personKey(req, ip)) }, cors);
   }
   if (req.method !== "POST" || pathname !== "/chat") return sendJson(res, 404, { error: "not_found" }, cors);
   if (!originOk) return sendJson(res, 403, { error: "forbidden_origin" }, cors);

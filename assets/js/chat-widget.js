@@ -8,6 +8,7 @@
   var ENDPOINT = script && script.getAttribute("data-endpoint");
   var QUOTA_URL = ENDPOINT && ENDPOINT.replace(/\/chat$/, "/quota");
   var STORE_KEY = "kwChat.conversations";
+  var VISITOR_KEY = "kwChat.visitor";
   var MAX_CONVERSATIONS = 30;
   var MAX_STORED_MESSAGES = 100;
   var MAX_HISTORY = 10; // messages sent to the server per question
@@ -44,6 +45,30 @@
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
       .replace(/\n/g, "<br>");
+  }
+
+  // ---- visitor ID ------------------------------------------------------------
+
+  // Random per-browser ID; the proxy combines it with the IP to tell visitors apart.
+  var fallbackVisitor = null;
+
+  function randomId() {
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+  }
+
+  function visitorId() {
+    try {
+      var id = localStorage.getItem(VISITOR_KEY);
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(id || "")) {
+        id = randomId();
+        localStorage.setItem(VISITOR_KEY, id);
+      }
+      return id;
+    } catch (e) {
+      return fallbackVisitor || (fallbackVisitor = randomId());
+    }
   }
 
   // ---- saved conversations (localStorage) ---------------------------------
@@ -101,10 +126,10 @@
 
   var launcher = el("button", "kw-chat-launcher");
   launcher.type = "button";
-  launcher.setAttribute("aria-label", "Chat with AI");
+  launcher.setAttribute("aria-label", "Chat with my AI twin");
   launcher.innerHTML =
     '<i class="fas fa-comments" aria-hidden="true"></i>' +
-    '<span class="kw-chat-label-full">Chat With AI</span><span class="kw-chat-label-short">AI</span>';
+    '<span class="kw-chat-label-full">Chat With my AI Twin</span><span class="kw-chat-label-short">AI</span>';
 
   var panel = el("div", "kw-chat-panel");
   panel.hidden = true;
@@ -195,7 +220,7 @@
   function loadQuota() {
     if (quotaLoaded || !QUOTA_URL) return;
     quotaLoaded = true;
-    fetch(QUOTA_URL)
+    fetch(QUOTA_URL, { headers: { "X-Chat-Visitor": visitorId() } })
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (data) { if (data) setQuota(data.quota); })
       .catch(function () { quotaLoaded = false; });
@@ -331,7 +356,7 @@
       if (!ENDPOINT) throw new Error("Chat is not configured yet.");
       var res = await fetch(ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Chat-Visitor": visitorId() },
         body: JSON.stringify({ messages: conversation.messages.slice(-MAX_HISTORY) }),
       });
       if (!res.ok) {
