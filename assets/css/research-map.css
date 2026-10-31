@@ -1,0 +1,62 @@
+/* ---- Research map: layered block diagram ---------------------------- */
+.rmap {
+  display: grid;
+  grid-template-columns: 92px repeat(5, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  gap: 6px;
+  margin: 1em 0 0.5em;
+  font-size: 0.78em;
+  line-height: 1.35;
+}
+.rmap-label {
+  grid-column: 1;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; font-weight: 700; text-decoration: underline;
+  color: #333;
+}
+.rmap-block {
+  padding: 10px 8px; border-radius: 3px; text-align: center;
+  color: #333; box-shadow: 1px 2px 3px rgba(0, 0, 0, .12);
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+}
+.rmap-title { font-weight: 700; font-size: 1.05em; }
+.rmap-sub { color: #555; font-size: 0.92em; }
+.rmap-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.rmap-chip {
+  width: auto; margin: 0; padding: 2px 7px; border-radius: 999px; cursor: pointer;
+  border: 1px solid #79292f; background: #fff; color: #79292f;
+  font: inherit; font-size: 0.95em; font-weight: 700; line-height: 1.4;
+}
+.rmap-chip small { font-weight: 400; opacity: .8; }
+.rmap-chip.is-first { background: #79292f; color: #fff; }
+.rmap-chip:hover { box-shadow: 0 0 0 2px rgba(121, 41, 47, .25); }
+
+/* layer rows */
+.rmap-r1 { grid-row: 1; }
+.rmap-r2 { grid-row: 2; }
+.rmap-r3 { grid-row: 3; }
+
+/* blocks: grid placement + colour */
+.rmap-app-llm   { grid-column: 2 / 4; background: #bdd7ee; }
+.rmap-app-fl    { grid-column: 4 / 5; background: #fff2cc; }
+.rmap-app-sense { grid-column: 5 / 7; background: #e2f0d9; }
+.rmap-sys-mem   { grid-column: 2 / 3; background: #c5e0b4; }
+.rmap-sys-kv    { grid-column: 3 / 4; background: #deebf7; }
+.rmap-sys-train { grid-column: 4 / 5; background: #fce4f4; }
+.rmap-sys-comp  { grid-column: 5 / 6; background: #fbe5d6; }
+.rmap-sys-power { grid-column: 6 / 7; background: #f8cbad; }
+.rmap-hw-jetson { grid-column: 2 / 3; background: #ededed; }
+.rmap-hw-phone  { grid-column: 3 / 5; background: #d9d9d9; }
+.rmap-hw-iot    { grid-column: 5 / 6; background: #dce3ea; }
+.rmap-hw-power  { grid-column: 6 / 7; background: #f4e4d4; }
+
+.rmap-legend { font-size: 0.75em; color: #666; margin-bottom: 1.5em; }
+.rmap-legend .rmap-chip { font-size: 0.85em; padding: 0 6px; }
+.rmap-legend .rmap-chip { cursor: default; pointer-events: none; }
+
+/* narrow screens: stack the layers */
+@media (max-width: 760px) {
+  .rmap { display: flex; flex-direction: column; }
+  .rmap-label { justify-content: flex-start; margin-top: 8px; }
+
+}

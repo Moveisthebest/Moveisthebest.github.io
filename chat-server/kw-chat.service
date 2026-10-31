@@ -1,0 +1,22 @@
+# /etc/systemd/system/kw-chat.service
+[Unit]
+Description=Kun Wang homepage chat proxy (DeepSeek)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/kw-chat/server.mjs
+WorkingDirectory=/opt/kw-chat
+EnvironmentFile=/etc/kw-chat.env
+DynamicUser=yes
+StateDirectory=kw-chat
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

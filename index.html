@@ -27,6 +27,8 @@
 
 <link rel="stylesheet" href="assets/css/main.css">
 <link rel="stylesheet" href="assets/css/academicons.css">
+<link rel="stylesheet" href="assets/css/chat-widget.css">
+<link rel="stylesheet" href="assets/css/research-map.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <style>
@@ -77,8 +79,6 @@
   .visitor-globe svg,
   .visitor-globe > div { max-width: 100% !important; height: auto !important; }
 </style>
-<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
-<script>LA.init({id:"3RbhERTgA4dKxoZm",ck:"3RbhERTgA4dKxoZm",autoTrack:true})</script>
 </head>
 
 <body>
@@ -90,6 +90,7 @@
         <button class="hidden" count="0"><div class="navicon"></div></button>
         <ul class="visible-links">
           <li class="masthead__menu-item"><a href="#about-me">About</a></li>
+          <li class="masthead__menu-item"><a href="#research">Research</a></li>
           <li class="masthead__menu-item"><a href="#experience">Experience</a></li>
           <li class="masthead__menu-item"><a href="#publications">Publications</a></li>
           <li class="masthead__menu-item"><a href="#awards">Awards</a></li>
@@ -153,6 +154,84 @@
           </span> -->
         </div>
 
+        <p><span class="anchor" id="research"></span></p>
+
+        <h1 id="research-map">Research Map</h1>
+        <p>I build <strong>on-device AI infrastructure</strong> that lets AI models, especially LLMs, run efficiently and privately on smartphones, edge boards and IoT devices, co-designing systems with the underlying hardware. Click a paper to ask my AI assistant about it.</p>
+
+        <div class="rmap" aria-label="Research map">
+          <div class="rmap-label rmap-r1">Research<br>Directions</div>
+          <div class="rmap-block rmap-r1 rmap-app-llm">
+            <div class="rmap-title">On-Device AI Infra &amp; Agents</div>
+            <div class="rmap-sub">long-context · local large LLMs · privacy</div>
+          </div>
+          <div class="rmap-block rmap-r1 rmap-app-fl">
+            <div class="rmap-title">On-Device AI Training</div>
+            <div class="rmap-sub">heterogeneous federated learning</div>
+          </div>
+          <div class="rmap-block rmap-r1 rmap-app-sense">
+            <div class="rmap-title">On-Device AI Sensing &amp; Interaction</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip" data-chat-ask="How does ASGaze track gaze on any surface with a phone?">ASGaze <small>TMC'24</small></button>
+              <button type="button" class="rmap-chip" data-chat-ask="What is NeuroPath and how does it decode motor imagery from consumer EEG?">NeuroPath <small>SenSys'26</small></button>
+            </div>
+          </div>
+
+          <div class="rmap-label rmap-r2">System &amp;<br>Runtime<br>Level</div>
+          <div class="rmap-block rmap-r2 rmap-sys-mem">
+            <div class="rmap-title">Memory Management</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip is-first" data-chat-ask="What problem does SwapNet solve and how?">SwapNet <small>TMC'24</small></button>
+              <button type="button" class="rmap-chip is-first" data-chat-ask="What is ExoMem and how does it relate to SwapNet?">ExoMem <small>MobiCom'26</small></button>
+            </div>
+          </div>
+          <div class="rmap-block rmap-r2 rmap-sys-kv">
+            <div class="rmap-title">KV Cache Management</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip is-first" data-chat-ask="What problem does NPUGen solve and how?">NPUGen <small>MobiCom'26</small></button>
+              <button type="button" class="rmap-chip is-first" data-chat-ask="How does ChronoCache keep long-context accuracy with constant memory?">ChronoCache <small>TMC'26</small></button>
+            </div>
+          </div>
+          <div class="rmap-block rmap-r2 rmap-sys-train">
+            <div class="rmap-title">Training Time Estimation</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip is-first" data-chat-ask="What is LATTE and why does training time estimation matter in federated learning?">LATTE <small>MobiCom'24</small></button>
+              <button type="button" class="rmap-chip is-first" data-chat-ask="What does the TMC'25 journal version of LATTE add over the MobiCom'24 paper?">LATTE+ <small>TMC'25</small></button>
+            </div>
+          </div>
+          <div class="rmap-block rmap-r2 rmap-sys-comp">
+            <div class="rmap-title">Model Compression</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip" data-chat-ask="Tell me about the TinyML pruning paper for weak IoT devices.">TinyML Pruning <small>TMC'26</small></button>
+            </div>
+          </div>
+          <div class="rmap-block rmap-r2 rmap-sys-power">
+            <div class="rmap-title">Energy &amp; Thermal Control</div>
+            <div class="rmap-chips">
+              <button type="button" class="rmap-chip" data-chat-ask="How does GearDVFS handle concurrent tasks on mobile devices?">GearDVFS <small>MobiCom'23</small></button>
+            </div>
+          </div>
+
+          <div class="rmap-label rmap-r3">Hardware<br>Level</div>
+          <div class="rmap-block rmap-r3 rmap-hw-jetson">
+            <div class="rmap-title">Edge GPUs</div>
+            <div class="rmap-sub">Jetson · unified memory</div>
+          </div>
+          <div class="rmap-block rmap-r3 rmap-hw-phone">
+            <div class="rmap-title">Smartphone SoCs</div>
+            <div class="rmap-sub">CPU · GPU · NPU · flash storage</div>
+          </div>
+          <div class="rmap-block rmap-r3 rmap-hw-iot">
+            <div class="rmap-title">IoT MCUs</div>
+            <div class="rmap-sub">extremely weak devices</div>
+          </div>
+          <div class="rmap-block rmap-r3 rmap-hw-power">
+            <div class="rmap-title">Power Domains</div>
+            <div class="rmap-sub">DVFS · thermal</div>
+          </div>
+
+        </div>
+        <p class="rmap-legend"><span class="rmap-chip is-first">Paper</span> first / co-first author &nbsp; <span class="rmap-chip">Paper</span> collaborator</p>
 
         <p><span class="anchor" id="experience"></span></p>
 
@@ -350,6 +429,9 @@
     });
   });
 </script>
+
+<!-- "Chat with me" widget: the endpoint is the chat proxy in /chat-server -->
+<script src="assets/js/chat-widget.js" data-endpoint="https://flash-api.top/kw-chat/chat"></script>
 
 </body>
 </html>
