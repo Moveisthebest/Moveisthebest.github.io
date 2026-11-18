@@ -67,6 +67,18 @@
   }
   /* keep the avatar from getting huge on very wide screens */
   .sidebar .author__avatar img { max-width: 220px; }
+  /* square photo with softly feathered edges (overrides the round crop in main.css) */
+  .author__avatar img {
+    border-radius: 6px;
+    padding: 0;
+    border: none;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent),
+                        linear-gradient(to bottom, transparent, #000 3%, #000 97%, transparent);
+    -webkit-mask-composite: source-in;
+            mask-image: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent),
+                        linear-gradient(to bottom, transparent, #000 3%, #000 97%, transparent);
+            mask-composite: intersect;
+  }
   /* let the address / email lines use the extra room instead of wrapping */
   .sidebar .author__urls li { white-space: normal; }
 
@@ -134,7 +146,6 @@
         </ul>
         <div class="author__urls_sm">
           <a href="mailto:kwang69-c@my.cityu.edu.hk" aria-label="Email"><i class="fas fa-fw fa-envelope" aria-hidden="true"></i></a>
-          <a href="https://www.linkedin.com/in/kun-wang-74457017b/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-fw fa-linkedin" aria-hidden="true"></i></a>
           <a href="https://scholar.google.com/citations?user=-cCYLZ8AAAAJ" target="_blank" rel="noopener noreferrer" aria-label="Google Scholar"><i class="fas fa-fw fa-graduation-cap" aria-hidden="true"></i></a>
         </div>
       </div>
